@@ -20,11 +20,24 @@ Terraform modules describe trust zones and firewall policy while a local Docker 
 ## Architecture
 ```mermaid
 flowchart LR
-  Input[Validated input] --> Core[Domain engine]
-  Core --> Store[(Durable store)]
-  CLI[CLI] --> Core
-  API[REST API] --> Core
-  Core --> Evidence[Results and evidence]
+  Internet((Internet)) -->|443 only| Proxy[NGINX public zone]
+  subgraph Public[Public network]
+    Proxy
+  end
+  Proxy -->|8080| App[Non-root application]
+  subgraph Application[Internal application network]
+    App
+  end
+  App -->|5432| DB[(PostgreSQL)]
+  subgraph Data[Internal data network]
+    DB
+  end
+  Secret[Docker secret file] --> DB
+  Health[Container health checks] --> Proxy
+  Health --> App
+  Terraform[Terraform policy model] -. describes .-> Public
+  Terraform -. describes .-> Application
+  Terraform -. describes .-> Data
 ```
 See [architecture](docs/architecture.md).
 
