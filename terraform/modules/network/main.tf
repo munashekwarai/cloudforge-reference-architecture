@@ -1,14 +1,16 @@
-variable "environment" { type = string }
-variable "public_cidr" { type = string }
-variable "app_cidr" { type = string }
-variable "data_cidr" { type = string }
 locals {
-  trust_zones = { public = var.public_cidr, application = var.app_cidr, data = var.data_cidr }
-  firewall_rules = [
-    { from = "internet", to = "public", ports = [443] },
-    { from = "public", to = "application", ports = [8080] },
-    { from = "application", to = "data", ports = [5432] }
+  trust_zones = {
+    public      = { cidr = var.zones.public, internet_routable = true }
+    application = { cidr = var.zones.application, internet_routable = false }
+    data        = { cidr = var.zones.data, internet_routable = false }
+  }
+  ingress_rules = [
+    { name = "https_to_proxy", source = "internet", destination = "public", protocol = "tcp", ports = [443] },
+    { name = "proxy_to_application", source = "public", destination = "application", protocol = "tcp", ports = [8080] },
+    { name = "application_to_postgres", source = "application", destination = "data", protocol = "tcp", ports = [5432] }
   ]
+  management_rules = [for cidr in var.management_cidrs : {
+    name = "management_https", source = cidr, destination = "public", protocol = "tcp", ports = [443]
+  }]
+  denied_paths = ["internet_to_application", "internet_to_data", "public_to_data", "data_to_public"]
 }
-output "trust_zones" { value = local.trust_zones }
-output "firewall_rules" { value = local.firewall_rules }

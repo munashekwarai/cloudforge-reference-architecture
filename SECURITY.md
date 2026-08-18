@@ -1,3 +1,3 @@
 # Security Policy
 
-Report suspected vulnerabilities privately through GitHub Security Advisories. Do not include credentials, private telemetry, or exploit data in a public issue. Maintainers will acknowledge a report, assess impact, coordinate a fix, and publish remediation when appropriate. No response-time warranty is implied.
+Report vulnerabilities privately through GitHub Security Advisories. Do not publish credentials, private keys, dumps, real network ranges, or exploit details in issues. Include the affected commit, trust boundary, impact, and a safe minimal reproduction. No certification or response-time guarantee is implied.

@@ -1,3 +1,3 @@
 # Contributing
 
-Use a focused branch, explain the operational problem, add or update tests, run the documented checks, and submit a reviewable change. Security reports belong in the private process described in `SECURITY.md`, not public issues.
+Explain the trust boundary or operational failure affected. Update Terraform assertions, Compose topology tests, diagrams, deployment, security, and rollback guidance together. Run `./scripts/validate.sh`. Never commit `.secrets`, state, credentials, private keys, database dumps, or environment-specific network allocations.

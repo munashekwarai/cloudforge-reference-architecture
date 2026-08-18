@@ -1,44 +1,30 @@
 # CloudForge Architecture
 
-## System context
+## Trust zones
 
-CloudForge models three trust zones. Only NGINX publishes a loopback-bound host port; the application and PostgreSQL networks are internal. NGINX can reach the application but cannot directly join the data network. The non-root, read-only application is the sole bridge to PostgreSQL. Database credentials enter through a mounted secret file rather than Compose environment values. Terraform outputs make the intended cross-zone ports reviewable independently of the local runtime.
+The public zone contains only the TLS proxy. The internal application zone carries proxy-to-app traffic. The internal data zone carries app-to-PostgreSQL and backup traffic. The proxy never joins data; PostgreSQL never joins public or application; only the application bridges application and data. This makes the required communication path visible instead of relying on naming conventions.
 
-## Component diagram
+## Policy and runtime
+
+Terraform is the design contract. It validates distinct CIDRs, known environments, explicit management CIDRs, allowed ports, denied paths, and service hardening. Compose is the executable local proof. The two representations are tested independently so a topology edit cannot silently become policy.
 
 ```mermaid
-flowchart LR
-  Internet((Internet)) -->|443 only| Proxy[NGINX public zone]
-  subgraph Public[Public network]
-    Proxy
-  end
-  Proxy -->|8080| App[Non-root application]
-  subgraph Application[Internal application network]
-    App
-  end
-  App -->|5432| DB[(PostgreSQL)]
-  subgraph Data[Internal data network]
-    DB
-  end
-  Secret[Docker secret file] --> DB
-  Health[Container health checks] --> Proxy
-  Health --> App
-  Terraform[Terraform policy model] -. describes .-> Public
-  Terraform -. describes .-> Application
-  Terraform -. describes .-> Data
+sequenceDiagram
+ participant C as Client
+ participant P as TLS proxy / public
+ participant A as App / application
+ participant D as PostgreSQL / data
+ C->>P: TLS 1.2+ request on 443
+ P->>A: HTTP 8080 + request ID
+ A-->>P: JSON response
+ P-->>C: TLS response + security headers
+ Note over C,D: no client-to-app, client-to-data, or proxy-to-data path
 ```
 
-## Data and control flow
+## Availability and lifecycle
 
-The solid arrows show runtime data or control flow. Dotted arrows, where present, describe policy rather than runtime connectivity. Domain decisions remain independent of CLI and HTTP delivery so they can be tested without binding sockets or paid services. Inputs are validated before persistence or outbound I/O, and evidence is retained at the point where the system makes an operational decision.
+Proxy health confirms TLS listener operation. Application liveness proves the process loop, while readiness can become false during graceful drain. PostgreSQL uses `pg_isready`. Compose starts dependencies based on health. SIGTERM changes readiness before shutdown so an external orchestrator can stop routing requests.
 
-## Trust boundaries
+## Secrets and state
 
-1. **External input boundary:** network targets, telemetry, identity requests, documents, logs, or field records are untrusted.
-2. **Domain boundary:** validated values enter deterministic policy and state-transition logic.
-3. **Persistence boundary:** parameterized or structured writes protect stored operational evidence.
-4. **Operator boundary:** alerts, conflict choices, infrastructure deployment, and other consequential actions remain explicit operator responsibilities.
-
-## Failure behavior
-
-Adapters return explicit errors or states rather than manufacturing successful results. Timeouts and unavailable dependencies affect only the relevant operation. The limitations documented in the README define what cannot be inferred from the available evidence.
+Database password, TLS certificate/key, and pgpass are file-mounted secrets rather than literal Compose values. PostgreSQL data and backup dumps use separate named volumes. Application roots are read-only with temporary filesystems only where required. Local bootstrap creates ignored, mode-600 material; production must use a managed secret and certificate system.

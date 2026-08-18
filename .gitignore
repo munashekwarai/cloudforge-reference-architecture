@@ -9,3 +9,6 @@ dist/
 coverage/
 terraform.tfstate*
 .terraform/
+
+.secrets/
+*.egg-info/

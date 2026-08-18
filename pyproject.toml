@@ -3,9 +3,9 @@ requires=["setuptools>=68"]
 build-backend="setuptools.build_meta"
 [project]
 name="cloudforge-validation"
-version="0.1.0"
+version="0.2.0"
 requires-python=">=3.11"
 [project.optional-dependencies]
-dev=["pytest>=8,<9"]
+dev=["pytest>=8,<9","PyYAML>=6,<7"]
 [tool.pytest.ini_options]
 pythonpath=["."]
